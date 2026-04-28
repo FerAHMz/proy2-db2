@@ -1,0 +1,19 @@
+{
+  "name": "fraude-neo4j-backend",
+  "version": "1.0.0",
+  "description": "Backend Node.js para deteccion de fraude con Neo4j (Proyecto 2 DB2)",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "multer": "^2.0.1",
+    "neo4j-driver": "^5.27.0"
+  }
+}
