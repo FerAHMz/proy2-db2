@@ -10,8 +10,10 @@ import {
 } from '@/api/schema'
 import PropertyEditor from '@/components/PropertyEditor.vue'
 import { defaultEntry, entriesToObject, type PropEntry } from '@/lib/coerce'
+import { useToasts } from '@/stores/toasts'
 
 const router = useRouter()
+const toasts = useToasts()
 
 type Mode = 'single' | 'multi'
 const mode = ref<Mode>('single')
@@ -74,15 +76,19 @@ async function submit() {
     if (mode.value === 'single') {
       await nodesApi.createSingle(labelSingle.value, payload)
       const id = String(payload[ID_FIELD[labelSingle.value]])
+      toasts.success(`Nodo ${labelSingle.value} ${id} creado`)
       router.push({ name: 'nodos.detail', params: { label: labelSingle.value, id } })
     } else {
       const labels: string[] = [labelMulti.value, ...selectedSecondaries.value]
       await nodesApi.createMulti(labels, payload)
       const id = String(payload[ID_FIELD[labelMulti.value]])
+      toasts.success(`Nodo ${labels.join(':')} ${id} creado`)
       router.push({ name: 'nodos.detail', params: { label: labelMulti.value, id } })
     }
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Error al crear el nodo'
+    const msg = e instanceof Error ? e.message : 'Error al crear el nodo'
+    error.value = msg
+    toasts.error(msg)
   } finally {
     submitting.value = false
   }

@@ -7,8 +7,10 @@ que un equipo de compliance/fraude ejecuta sobre el sistema.
 
 - **`data-loader/`** – scripts Python que generan ~5,800 nodos sinteticos en
   CSV y los cargan a Aura.
-- **`backend/`** – API REST en Node.js (Express + neo4j-driver) lista para
-  un frontend en Vue o React.
+- **`backend/`** – API REST en Node.js (Express + neo4j-driver).
+- **`frontend/`** – UI de gestion en Vue 3 + Vite + Tailwind. Cada accion
+  CRUD de la rubrica esta accesible desde una pantalla. Detalles en
+  [`frontend/README.md`](./frontend/README.md).
 
 ---
 

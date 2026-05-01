@@ -4,16 +4,26 @@ import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { getHealth } from '@/api/health'
 import { apiBaseUrl } from '@/api/client'
 
-interface NavItem { to: string; label: string; icon: string }
+interface NavItem { to: string; label: string; icon: string; matchPrefix?: string }
 
 const nav: NavItem[] = [
   { to: '/',            label: 'Inicio',                icon: '◉' },
   { to: '/dashboard',   label: 'Dashboard analítico',   icon: '▤' },
-  { to: '/nodos',       label: 'Explorar nodos',        icon: '◌' },
+  { to: '/nodos',       label: 'Explorar nodos',        icon: '◌', matchPrefix: '/nodos' },
   { to: '/nodos/crear', label: 'Crear nodo',            icon: '＋' },
   { to: '/relaciones',  label: 'Auditoría relaciones',  icon: '↔' },
   { to: '/csv',         label: 'Importar CSV',          icon: '↥' },
 ]
+
+function isActive(item: NavItem) {
+  if (route.path === item.to) return true
+  if (item.matchPrefix && route.path.startsWith(item.matchPrefix)) {
+    // prevent double-highlight when /nodos/crear matches /nodos prefix
+    if (item.to === '/nodos' && route.path === '/nodos/crear') return false
+    return true
+  }
+  return false
+}
 
 const route = useRoute()
 const pageTitle = computed(() => (route.meta?.title as string) || 'FraudGraph')
@@ -58,12 +68,16 @@ onMounted(checkHealth)
           v-for="item in nav"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                 text-slate-700 hover:bg-slate-100 transition-colors"
-          active-class="!bg-brand-50 !text-brand-700 font-medium"
-          exact-active-class=""
+          :class="[
+            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+            isActive(item)
+              ? 'bg-brand-50 text-brand-700 font-medium'
+              : 'text-slate-700 hover:bg-slate-100',
+          ]"
         >
-          <span class="w-5 text-center text-slate-400">{{ item.icon }}</span>
+          <span class="w-5 text-center" :class="isActive(item) ? 'text-brand-500' : 'text-slate-400'">
+            {{ item.icon }}
+          </span>
           <span>{{ item.label }}</span>
         </RouterLink>
       </nav>

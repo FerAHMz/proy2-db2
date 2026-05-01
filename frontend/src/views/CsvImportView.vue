@@ -14,6 +14,9 @@ import {
 } from '@/api/schema'
 import { detectType } from '@/lib/props'
 import { uploadCsv, type CsvConfig, type CsvUploadResult } from '@/api/csv'
+import { useToasts } from '@/stores/toasts'
+
+const toasts = useToasts()
 
 type Mode = 'nodes' | 'relationships'
 
@@ -152,9 +155,13 @@ async function submit() {
   error.value = null
   result.value = null
   try {
-    result.value = await uploadCsv(file.value, builtConfig.value)
+    const r = await uploadCsv(file.value, builtConfig.value)
+    result.value = r
+    toasts.success(`CSV cargado: ${r.upserted} ${mode.value === 'nodes' ? 'nodos' : 'relaciones'}`)
   } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Error al cargar el CSV'
+    const msg = e instanceof Error ? e.message : 'Error al cargar el CSV'
+    error.value = msg
+    toasts.error(msg)
   } finally {
     submitting.value = false
   }

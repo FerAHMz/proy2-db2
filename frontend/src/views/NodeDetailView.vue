@@ -9,6 +9,9 @@ import PropEditDialog from '@/components/PropEditDialog.vue'
 import RelCreateDialog from '@/components/RelCreateDialog.vue'
 import { relationshipsApi, type RelEndpoint } from '@/api/relationships'
 import type { NodeConnection } from '@/api/nodes'
+import { useToasts } from '@/stores/toasts'
+
+const toasts = useToasts()
 
 const route = useRoute()
 const router = useRouter()
@@ -116,9 +119,12 @@ async function handleSubmit(payload: Record<string, unknown>) {
   try {
     await nodesApi.patchProps(label.value, id.value, payload)
     dialogOpen.value = false
+    toasts.success('Propiedades guardadas')
     await load()
   } catch (e: unknown) {
-    mutationError.value = e instanceof Error ? e.message : 'Error al actualizar'
+    const msg = e instanceof Error ? e.message : 'Error al actualizar'
+    mutationError.value = msg
+    toasts.error(msg)
   } finally {
     mutating.value = false
   }
@@ -185,9 +191,12 @@ async function deleteRelationship(c: NodeConnection) {
   try {
     const { from, to } = relEndpoints(c)
     await relationshipsApi.delete(c.rel, from, to)
+    toasts.success(`Relación ${c.rel} eliminada`)
     await load()
   } catch (e: unknown) {
-    mutationError.value = e instanceof Error ? e.message : 'Error al eliminar la relación'
+    const msg = e instanceof Error ? e.message : 'Error al eliminar la relación'
+    mutationError.value = msg
+    toasts.error(msg)
   }
 }
 
@@ -197,9 +206,12 @@ async function deleteNode() {
   mutationError.value = null
   try {
     await nodesApi.delete(label.value, id.value)
+    toasts.success(`Nodo ${id.value} eliminado`)
     router.push({ name: 'nodos.label', params: { label: label.value } })
   } catch (e: unknown) {
-    mutationError.value = e instanceof Error ? e.message : 'Error al eliminar el nodo'
+    const msg = e instanceof Error ? e.message : 'Error al eliminar el nodo'
+    mutationError.value = msg
+    toasts.error(msg)
   } finally {
     mutating.value = false
   }

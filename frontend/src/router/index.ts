@@ -54,6 +54,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/CsvImportView.vue'),
         meta: { title: 'Importar CSV' },
       },
+      {
+        path: ':pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('@/views/NotFoundView.vue'),
+        meta: { title: 'No encontrado' },
+      },
     ],
   },
 ]
