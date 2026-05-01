@@ -21,8 +21,20 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'nodos',
         name: 'nodos',
-        component: () => import('@/views/PlaceholderView.vue'),
-        meta: { title: 'Explorar nodos', soon: true },
+        component: () => import('@/views/NodesIndexView.vue'),
+        meta: { title: 'Explorar nodos' },
+      },
+      {
+        path: 'nodos/:label',
+        name: 'nodos.label',
+        component: () => import('@/views/NodeListView.vue'),
+        meta: { title: 'Tabla de nodos' },
+      },
+      {
+        path: 'nodos/:label/:id',
+        name: 'nodos.detail',
+        component: () => import('@/views/NodeDetailView.vue'),
+        meta: { title: 'Ficha de entidad' },
       },
       {
         path: 'nodos/crear',
