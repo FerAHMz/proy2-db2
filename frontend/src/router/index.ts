@@ -15,8 +15,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'dashboard',
         name: 'dashboard',
-        component: () => import('@/views/PlaceholderView.vue'),
-        meta: { title: 'Dashboard analítico', soon: true },
+        component: () => import('@/views/DashboardView.vue'),
+        meta: { title: 'Dashboard analítico' },
       },
       {
         path: 'nodos',
