@@ -5,6 +5,7 @@ import { nodesApi, type NodeDetailResponse } from '@/api/nodes'
 import { ID_FIELD, PRIMARY_LABELS, type PrimaryLabel } from '@/api/schema'
 import { detectType, formatPropValue } from '@/lib/props'
 import GraphView from '@/components/GraphView.vue'
+import PropEditDialog from '@/components/PropEditDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -82,6 +83,59 @@ function pickIdValue(node: { properties: Record<string, unknown> }) {
   return Object.values(node.properties)[0]?.toString() || '?'
 }
 
+// === Property mutation UI ===
+const dialogOpen = ref(false)
+const dialogMode = ref<'single' | 'many'>('many')
+const dialogInitial = ref<{ name?: string; value?: unknown } | undefined>(undefined)
+const dialogLockName = ref(false)
+const dialogTitle = ref<string | undefined>(undefined)
+const mutating = ref(false)
+const mutationError = ref<string | null>(null)
+
+function openAddDialog() {
+  dialogMode.value = 'many'
+  dialogInitial.value = undefined
+  dialogLockName.value = false
+  dialogTitle.value = 'Agregar propiedades'
+  dialogOpen.value = true
+}
+function openEditDialog(key: string, value: unknown) {
+  dialogMode.value = 'single'
+  dialogInitial.value = { name: key, value }
+  dialogLockName.value = true
+  dialogTitle.value = `Editar "${key}"`
+  dialogOpen.value = true
+}
+
+async function handleSubmit(payload: Record<string, unknown>) {
+  mutating.value = true
+  mutationError.value = null
+  try {
+    await nodesApi.patchProps(label.value, id.value, payload)
+    dialogOpen.value = false
+    await load()
+  } catch (e: unknown) {
+    mutationError.value = e instanceof Error ? e.message : 'Error al actualizar'
+  } finally {
+    mutating.value = false
+  }
+}
+
+async function deleteProp(key: string) {
+  if (key === ID_FIELD[label.value]) {
+    mutationError.value = 'No se puede borrar el id field del nodo.'
+    return
+  }
+  if (!confirm(`Eliminar la propiedad "${key}"?`)) return
+  mutationError.value = null
+  try {
+    await nodesApi.removeProps(label.value, id.value, [key])
+    await load()
+  } catch (e: unknown) {
+    mutationError.value = e instanceof Error ? e.message : 'Error al eliminar'
+  }
+}
+
 function openConnection(otherLabel: string, otherProps: Record<string, unknown>) {
   if (!(PRIMARY_LABELS as readonly string[]).includes(otherLabel)) return
   const idF = ID_FIELD[otherLabel as PrimaryLabel]
@@ -142,22 +196,47 @@ onMounted(load)
         <div class="card lg:col-span-1">
           <div class="card-header flex items-center justify-between">
             <h3 class="font-semibold text-slate-900">Propiedades</h3>
-            <span class="badge-muted">{{ propsList.length }}</span>
+            <div class="flex items-center gap-2">
+              <span class="badge-muted">{{ propsList.length }}</span>
+              <button class="btn-secondary text-xs px-2 py-1" @click="openAddDialog">
+                + agregar
+              </button>
+            </div>
+          </div>
+          <div v-if="mutationError" class="px-5 py-2 bg-rose-50 text-rose-700 text-xs">
+            {{ mutationError }}
           </div>
           <div class="card-body p-0">
             <dl class="divide-y divide-slate-100">
               <div
                 v-for="p in propsList"
                 :key="p.key"
-                class="px-5 py-2.5 flex items-start justify-between gap-3"
+                class="px-5 py-2.5 flex items-start justify-between gap-3 group"
               >
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <dt class="text-xs uppercase tracking-wider text-slate-500">{{ p.key }}</dt>
                   <dd class="text-sm text-slate-800 break-words mt-0.5">
                     {{ formatPropValue(p.value as never) }}
                   </dd>
                 </div>
-                <span class="badge-muted text-[10px] shrink-0">{{ p.type }}</span>
+                <div class="flex items-center gap-1 shrink-0">
+                  <span class="badge-muted text-[10px]">{{ p.type }}</span>
+                  <button
+                    class="opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-brand-600 px-1"
+                    title="Editar"
+                    @click="openEditDialog(p.key, p.value)"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    v-if="p.key !== ID_FIELD[label]"
+                    class="opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-rose-600 px-1"
+                    title="Eliminar"
+                    @click="deleteProp(p.key)"
+                  >
+                    🗑
+                  </button>
+                </div>
               </div>
             </dl>
           </div>
@@ -246,5 +325,16 @@ onMounted(load)
         </div>
       </div>
     </template>
+
+    <PropEditDialog
+      :open="dialogOpen"
+      :mode="dialogMode"
+      :initial="dialogInitial"
+      :lock-name="dialogLockName"
+      :title="dialogTitle"
+      :busy="mutating"
+      @close="dialogOpen = false"
+      @submit="handleSubmit"
+    />
   </div>
 </template>

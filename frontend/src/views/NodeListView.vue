@@ -5,6 +5,9 @@ import { nodesApi, type NodeListItem } from '@/api/nodes'
 import { ID_FIELD, PRIMARY_LABELS, type PrimaryLabel } from '@/api/schema'
 import { formatPropValue, pickColumns } from '@/lib/props'
 import { fmtNum } from '@/lib/format'
+import Modal from '@/components/Modal.vue'
+import PropertyEditor from '@/components/PropertyEditor.vue'
+import { defaultEntry, entriesToObject, type PropEntry } from '@/lib/coerce'
 
 const route = useRoute()
 const router = useRouter()
@@ -83,6 +86,58 @@ function openDetail(item: NodeListItem) {
   router.push({ name: 'nodos.detail', params: { label: label.value, id } })
 }
 
+// === Bulk actions ===
+type BulkMode = 'set' | 'remove' | null
+const bulkMode = ref<BulkMode>(null)
+const bulkProps = ref<PropEntry[]>([defaultEntry()])
+const bulkRemoveNames = ref<string>('')
+const bulkBusy = ref(false)
+const bulkError = ref<string | null>(null)
+const bulkResult = ref<string | null>(null)
+
+function openBulk(mode: BulkMode) {
+  bulkMode.value = mode
+  bulkProps.value = [defaultEntry()]
+  bulkRemoveNames.value = ''
+  bulkError.value = null
+  bulkResult.value = null
+}
+
+async function submitBulk() {
+  bulkBusy.value = true
+  bulkError.value = null
+  bulkResult.value = null
+  try {
+    const filter = whereObject()
+    if (bulkMode.value === 'set') {
+      const properties = entriesToObject(bulkProps.value)
+      const res = await nodesApi.patchPropsBulk(label.value, filter, properties)
+      bulkResult.value = `${res.updated} nodo(s) actualizados.`
+    } else if (bulkMode.value === 'remove') {
+      const names = bulkRemoveNames.value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (!names.length) throw new Error('Indica al menos una propiedad')
+      const res = await nodesApi.removePropsBulk(label.value, filter, names)
+      bulkResult.value = `${res.updated} nodo(s) actualizados.`
+    }
+    await load()
+  } catch (e: unknown) {
+    bulkError.value = e instanceof Error ? e.message : 'Error en la operación masiva'
+  } finally {
+    bulkBusy.value = false
+  }
+}
+
+const filterSummary = computed(() => {
+  const obj = whereObject()
+  const entries = Object.entries(obj)
+  return entries.length
+    ? entries.map(([k, v]) => `${k} = ${v}`).join(' · ')
+    : 'sin filtro (TODOS los nodos del label)'
+})
+
 watch(label, () => {
   skip.value = 0
   filterRows.splice(0, filterRows.length, { key: '', value: '' })
@@ -157,6 +212,13 @@ onMounted(load)
           · skip {{ fmtNum(skip) }}
         </div>
         <div class="flex items-center gap-2">
+          <button class="btn-secondary text-xs" @click="openBulk('set')">
+            ⚙ etiquetar selección
+          </button>
+          <button class="btn-secondary text-xs" @click="openBulk('remove')">
+            ⌫ limpiar campo
+          </button>
+          <span class="w-px h-5 bg-slate-200 mx-1" />
           <button class="btn-secondary text-xs" :disabled="skip === 0 || loading" @click="prevPage">
             ← anterior
           </button>
@@ -220,5 +282,55 @@ onMounted(load)
         </table>
       </div>
     </div>
+
+    <!-- Bulk modal -->
+    <Modal
+      :open="bulkMode !== null"
+      :title="bulkMode === 'set' ? 'Acción masiva: agregar / actualizar propiedades' : 'Acción masiva: eliminar propiedades'"
+      size="lg"
+      @close="bulkMode = null"
+    >
+      <div class="space-y-4">
+        <div class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm">
+          <div class="text-xs uppercase tracking-wider text-slate-500 mb-1">
+            Filtro aplicado
+          </div>
+          <div class="font-mono text-slate-700">
+            <span class="badge-info mr-2">{{ label }}</span>
+            {{ filterSummary }}
+          </div>
+          <p class="text-xs text-slate-500 mt-2">
+            Se aplica a TODOS los nodos que cumplen el filtro actual de la tabla.
+            Modifica los filtros y vuelve a abrir el diálogo si quieres acotar.
+          </p>
+        </div>
+
+        <div v-if="bulkMode === 'set'">
+          <h4 class="text-sm font-semibold text-slate-700 mb-2">
+            Propiedades a aplicar
+          </h4>
+          <PropertyEditor v-model="bulkProps" />
+        </div>
+
+        <div v-else-if="bulkMode === 'remove'">
+          <label class="label">Propiedades a eliminar (separadas por coma)</label>
+          <input
+            v-model="bulkRemoveNames"
+            placeholder="ej. revisado, motivo_alerta"
+            class="input"
+          />
+        </div>
+
+        <div v-if="bulkError" class="text-sm text-rose-600">{{ bulkError }}</div>
+        <div v-if="bulkResult" class="text-sm text-emerald-600">{{ bulkResult }}</div>
+      </div>
+
+      <template #footer>
+        <button class="btn-secondary" :disabled="bulkBusy" @click="bulkMode = null">Cerrar</button>
+        <button class="btn-primary" :disabled="bulkBusy" @click="submitBulk">
+          {{ bulkBusy ? 'Aplicando…' : 'Aplicar' }}
+        </button>
+      </template>
+    </Modal>
   </div>
 </template>
