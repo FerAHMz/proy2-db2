@@ -204,7 +204,7 @@ onMounted(load)
       </div>
       <div class="flex items-center gap-2 text-sm">
         <RouterLink :to="{ name: 'nodos' }" class="text-brand-600 hover:underline">
-          ← cambiar label
+          Cambiar label
         </RouterLink>
         <select
           v-model="limit"
@@ -242,10 +242,10 @@ onMounted(load)
             <input v-model="row.value" placeholder="GT, activa…" class="input"
                    @keyup.enter="applyFilter" />
           </div>
-          <button class="btn-secondary text-xs px-2" @click="removeRow(i)">×</button>
+          <button class="btn-secondary text-xs" @click="removeRow(i)">Quitar</button>
         </div>
         <div class="flex items-center gap-2">
-          <button class="btn-secondary text-xs" @click="addRow">+ filtro</button>
+          <button class="btn-secondary text-xs" @click="addRow">Agregar filtro</button>
           <button class="btn-primary text-xs" @click="applyFilter">Aplicar</button>
         </div>
       </div>
@@ -261,29 +261,29 @@ onMounted(load)
         </div>
         <div class="flex items-center gap-2 flex-wrap">
           <button class="btn-secondary text-xs" @click="openBulk('set')">
-            ⚙ etiquetar selección
+            Etiquetar selección
           </button>
           <button class="btn-secondary text-xs" @click="openBulk('remove')">
-            ⌫ limpiar campo
+            Limpiar campo
           </button>
           <button
             class="btn-danger text-xs"
             :disabled="!selectedIds.size"
             @click="openBulk('delete-ids')"
           >
-            🗑 eliminar selección ({{ selectedIds.size }})
+            Eliminar selección ({{ selectedIds.size }})
           </button>
           <button class="btn-danger text-xs" @click="openBulk('delete-filter')">
-            🗑 eliminar por filtro
+            Eliminar por filtro
           </button>
           <span class="w-px h-5 bg-slate-200 mx-1" />
           <button class="btn-secondary text-xs" :disabled="skip === 0 || loading" @click="prevPage">
-            ← anterior
+            Anterior
           </button>
           <button class="btn-secondary text-xs" :disabled="loading || items.length < limit" @click="nextPage">
-            siguiente →
+            Siguiente
           </button>
-          <button class="btn-secondary text-xs" :disabled="loading" @click="load">↻</button>
+          <button class="btn-secondary text-xs" :disabled="loading" @click="load">Recargar</button>
         </div>
       </div>
       <div class="card-body p-0 overflow-x-auto">
@@ -349,7 +349,7 @@ onMounted(load)
                 </span>
                 <span v-else>{{ formatPropValue(item.n.properties[col]) }}</span>
               </td>
-              <td class="px-4 py-2 text-right text-brand-600 text-xs cursor-pointer" @click="openDetail(item)">→</td>
+              <td class="px-4 py-2 text-right text-brand-600 text-xs cursor-pointer" @click="openDetail(item)">abrir</td>
             </tr>
           </tbody>
         </table>

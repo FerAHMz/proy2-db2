@@ -43,6 +43,7 @@ const ENDPOINT_INDEX = [
   'GET    /api/analytics/comercios-con-alertas',
   'GET    /api/analytics/path-clientes',
   'GET    /api/analytics/resumen-grafo',
+  'GET    /api/analytics/grafo                     ?limit&label= subgrafo conexo',
   'POST   /api/csv/upload                          multipart: file + config',
 ];
 

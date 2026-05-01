@@ -50,7 +50,7 @@ const sizeClass: Record<NonNullable<typeof props.size>, string> = {
         >
           <div v-if="title" class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
             <h3 class="font-semibold text-slate-900">{{ title }}</h3>
-            <button class="text-slate-400 hover:text-slate-700" @click="emit('close')">×</button>
+            <button class="text-xs text-slate-500 hover:text-slate-900" @click="emit('close')">cerrar</button>
           </div>
           <div class="p-5">
             <slot />

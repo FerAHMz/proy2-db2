@@ -50,7 +50,7 @@ function go(label: string) {
             <div class="text-xs uppercase tracking-wider text-slate-500">Label</div>
             <div class="text-lg font-semibold text-slate-900 mt-0.5">{{ label }}</div>
           </div>
-          <div class="text-brand-600">→</div>
+          <div class="text-brand-600 text-xs">abrir</div>
         </div>
         <div class="mt-3 text-xs text-slate-500">
           <span v-if="loading && counts[label] === undefined">…</span>

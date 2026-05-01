@@ -2,45 +2,40 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { getHealth } from '@/api/health'
-import { apiBaseUrl } from '@/api/client'
 
-interface NavItem { to: string; label: string; icon: string; matchPrefix?: string }
+interface NavItem { to: string; label: string; matchPrefix?: string }
 
 const nav: NavItem[] = [
-  { to: '/',            label: 'Inicio',                icon: '◉' },
-  { to: '/dashboard',   label: 'Dashboard analítico',   icon: '▤' },
-  { to: '/nodos',       label: 'Explorar nodos',        icon: '◌', matchPrefix: '/nodos' },
-  { to: '/nodos/crear', label: 'Crear nodo',            icon: '＋' },
-  { to: '/relaciones',  label: 'Auditoría relaciones',  icon: '↔' },
-  { to: '/csv',         label: 'Importar CSV',          icon: '↥' },
+  { to: '/',            label: 'Dashboard analítico'   },
+  { to: '/grafo',       label: 'Grafo del sistema'     },
+  { to: '/nodos',       label: 'Explorar nodos',        matchPrefix: '/nodos' },
+  { to: '/nodos/crear', label: 'Crear nodo'             },
+  { to: '/relaciones',  label: 'Auditoría relaciones'   },
+  { to: '/csv',         label: 'Importar CSV'           },
 ]
+
+const route = useRoute()
+const pageTitle = computed(() => (route.meta?.title as string) || 'FraudGraph')
 
 function isActive(item: NavItem) {
   if (route.path === item.to) return true
   if (item.matchPrefix && route.path.startsWith(item.matchPrefix)) {
-    // prevent double-highlight when /nodos/crear matches /nodos prefix
     if (item.to === '/nodos' && route.path === '/nodos/crear') return false
     return true
   }
   return false
 }
 
-const route = useRoute()
-const pageTitle = computed(() => (route.meta?.title as string) || 'FraudGraph')
-
 type HealthState = 'idle' | 'checking' | 'ok' | 'down'
 const healthState = ref<HealthState>('idle')
-const healthMsg = ref('')
 
 async function checkHealth() {
   healthState.value = 'checking'
   try {
     const h = await getHealth()
     healthState.value = h.neo4j ? 'ok' : 'down'
-    healthMsg.value = h.neo4j ? 'Neo4j conectado' : 'Neo4j sin respuesta'
-  } catch (e: unknown) {
+  } catch {
     healthState.value = 'down'
-    healthMsg.value = e instanceof Error ? e.message : 'API no disponible'
   }
 }
 
@@ -58,7 +53,7 @@ onMounted(checkHealth)
           </div>
           <div>
             <div class="font-semibold text-slate-900 leading-tight">FraudGraph</div>
-            <div class="text-xs text-slate-500 leading-tight">Neo4j · UVG</div>
+            <div class="text-xs text-slate-500 leading-tight">Detección de fraude · Neo4j</div>
           </div>
         </div>
       </div>
@@ -69,21 +64,18 @@ onMounted(checkHealth)
           :key="item.to"
           :to="item.to"
           :class="[
-            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+            'block px-3 py-2 rounded-lg text-sm transition-colors',
             isActive(item)
               ? 'bg-brand-50 text-brand-700 font-medium'
               : 'text-slate-700 hover:bg-slate-100',
           ]"
         >
-          <span class="w-5 text-center" :class="isActive(item) ? 'text-brand-500' : 'text-slate-400'">
-            {{ item.icon }}
-          </span>
-          <span>{{ item.label }}</span>
+          {{ item.label }}
         </RouterLink>
       </nav>
 
-      <div class="px-4 py-3 border-t border-slate-200 text-xs text-slate-500">
-        <div class="flex items-center gap-2">
+      <div class="px-4 py-3 border-t border-slate-200">
+        <div class="flex items-center gap-2 text-xs text-slate-500">
           <span
             class="w-2 h-2 rounded-full"
             :class="{
@@ -93,23 +85,14 @@ onMounted(checkHealth)
               'bg-slate-300': healthState === 'idle',
             }"
           />
-          <span class="truncate">{{ healthMsg || 'Comprobando…' }}</span>
-        </div>
-        <div class="mt-1 truncate font-mono text-[11px] text-slate-400">
-          {{ apiBaseUrl() }}
+          <span>{{ healthState === 'ok' ? 'Conectado' : healthState === 'down' ? 'Sin conexión' : 'Comprobando…' }}</span>
         </div>
       </div>
     </aside>
 
     <div class="flex-1 flex flex-col min-w-0">
-      <header class="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between">
+      <header class="h-14 bg-white border-b border-slate-200 px-6 flex items-center">
         <h1 class="text-base font-semibold text-slate-900">{{ pageTitle }}</h1>
-        <button
-          class="text-xs text-slate-500 hover:text-brand-600 transition-colors"
-          @click="checkHealth"
-        >
-          revisar conexión
-        </button>
       </header>
       <main class="flex-1 p-6 overflow-y-auto">
         <RouterView />

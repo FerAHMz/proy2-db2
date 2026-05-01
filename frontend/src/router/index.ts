@@ -8,15 +8,15 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        name: 'home',
-        component: () => import('@/views/HomeView.vue'),
-        meta: { title: 'Inicio' },
-      },
-      {
-        path: 'dashboard',
         name: 'dashboard',
         component: () => import('@/views/DashboardView.vue'),
         meta: { title: 'Dashboard analítico' },
+      },
+      {
+        path: 'grafo',
+        name: 'grafo',
+        component: () => import('@/views/GraphExplorerView.vue'),
+        meta: { title: 'Grafo del sistema' },
       },
       {
         path: 'nodos',

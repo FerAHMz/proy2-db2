@@ -9,10 +9,10 @@ const styles = {
   info:    'bg-slate-800 text-white',
 }
 
-const icons = {
-  success: '✓',
-  error:   '✕',
-  info:    'ℹ',
+const labels = {
+  success: 'OK',
+  error:   'Error',
+  info:    'Aviso',
 }
 </script>
 
@@ -30,9 +30,11 @@ const icons = {
           :key="t.id"
           :class="['flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg text-sm', styles[t.type]]"
         >
-          <span class="font-bold">{{ icons[t.type] }}</span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider opacity-80">
+            {{ labels[t.type] }}
+          </span>
           <span class="flex-1">{{ t.message }}</span>
-          <button class="opacity-70 hover:opacity-100" @click="toasts.dismiss(t.id)">×</button>
+          <button class="opacity-70 hover:opacity-100 text-xs" @click="toasts.dismiss(t.id)">cerrar</button>
         </div>
       </TransitionGroup>
     </div>

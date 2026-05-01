@@ -132,7 +132,7 @@ const actionTitle = computed(() => {
           </select>
         </div>
         <div class="flex items-end">
-          <button class="btn-secondary w-full" @click="load">↻ Recargar</button>
+          <button class="btn-secondary w-full" @click="load">Recargar</button>
         </div>
       </div>
     </div>
@@ -155,19 +155,19 @@ const actionTitle = computed(() => {
         >
           <input v-model="row.key" placeholder="propiedad" class="input" />
           <input v-model="row.value" placeholder="valor" class="input" />
-          <button class="btn-secondary text-xs px-2" @click="removeFilter(i)">×</button>
+          <button class="btn-secondary text-xs" @click="removeFilter(i)">Quitar</button>
         </div>
         <div class="flex items-center gap-2">
-          <button class="btn-secondary text-xs" @click="addFilter">+ filtro</button>
+          <button class="btn-secondary text-xs" @click="addFilter">Agregar filtro</button>
           <span class="w-px h-5 bg-slate-200 mx-1" />
           <button class="btn-primary text-xs" @click="openAction('set')">
-            ⚙ agregar / actualizar props
+            Agregar / actualizar props
           </button>
           <button class="btn-secondary text-xs" @click="openAction('remove')">
-            ⌫ eliminar props
+            Eliminar props
           </button>
           <button class="btn-danger text-xs" @click="openAction('delete-rels')">
-            🗑 eliminar relaciones
+            Eliminar relaciones
           </button>
         </div>
       </div>
@@ -189,7 +189,7 @@ const actionTitle = computed(() => {
           <thead class="bg-slate-50 border-b">
             <tr>
               <th class="px-4 py-2 text-left text-xs uppercase tracking-wider text-slate-500">A</th>
-              <th class="px-4 py-2 text-left text-xs uppercase tracking-wider text-slate-500">→</th>
+              <th class="px-4 py-2 text-left text-xs uppercase tracking-wider text-slate-500">Tipo</th>
               <th class="px-4 py-2 text-left text-xs uppercase tracking-wider text-slate-500">B</th>
               <th class="px-4 py-2 text-left text-xs uppercase tracking-wider text-slate-500">Propiedades</th>
             </tr>
@@ -204,7 +204,7 @@ const actionTitle = computed(() => {
                   {{ Object.values(r.a.properties)[0] }}
                 </div>
               </td>
-              <td class="px-4 py-2 text-slate-400 text-center">→</td>
+              <td class="px-4 py-2 text-slate-500 text-center text-xs font-mono">{{ relType }}</td>
               <td class="px-4 py-2">
                 <div class="flex flex-wrap items-center gap-1">
                   <span v-for="l in r.labelsB" :key="l" class="badge-muted text-[10px]">{{ l }}</span>

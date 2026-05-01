@@ -189,15 +189,15 @@ async function submit() {
       @dragleave.prevent="dragOver = false"
       @drop.prevent="onDrop"
     >
-      <div class="text-4xl mb-3">↥</div>
       <h3 class="text-lg font-semibold text-slate-900">
-        Arrastra un CSV aquí o
-        <label class="text-brand-600 cursor-pointer hover:underline">
-          selecciónalo
-          <input type="file" accept=".csv,.txt" class="hidden" @change="onPick" />
-        </label>
+        Arrastra un archivo CSV aquí
       </h3>
-      <p class="text-sm text-slate-500 mt-1">Hasta 10 MB</p>
+      <p class="text-sm text-slate-500 mt-1">o</p>
+      <label class="btn-primary mt-3 inline-flex cursor-pointer">
+        Seleccionar archivo
+        <input type="file" accept=".csv,.txt" class="hidden" @change="onPick" />
+      </label>
+      <p class="text-xs text-slate-400 mt-3">Hasta 10 MB</p>
     </div>
 
     <!-- Loaded -->
@@ -401,7 +401,7 @@ async function submit() {
         <div class="text-sm">
           <div v-if="error" class="text-rose-600">{{ error }}</div>
           <div v-else-if="result" class="text-emerald-600">
-            ✓ Cargado: <strong>{{ result.upserted }}</strong>
+            Cargado: <strong>{{ result.upserted }}</strong>
             {{ mode === 'nodes' ? 'nodos upserted' : 'relaciones upserted' }}
             de {{ result.rows_in_csv }} fila(s) en el CSV.
           </div>

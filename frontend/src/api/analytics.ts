@@ -73,6 +73,27 @@ export interface PathClientes {
   distancia: number | null
 }
 
+export interface GraphNode {
+  _id: string
+  labels: string[]
+  properties: Record<string, unknown>
+}
+
+export interface GraphEdge {
+  _id: string
+  type: string
+  startId: string
+  endId: string
+  properties: Record<string, unknown>
+}
+
+export interface GraphSnapshot {
+  node_count: number
+  edge_count: number
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
+
 export const analyticsApi = {
   topClientesMonto: async (limit = 10) => {
     const { data } = await api.get<ListResponse<TopClienteMonto>>(
@@ -120,6 +141,12 @@ export const analyticsApi = {
   pathClientes: async (from: string, to: string, max = 4) => {
     const { data } = await api.get<PathClientes>('/api/analytics/path-clientes', {
       params: { from, to, max },
+    })
+    return data
+  },
+  grafo: async (limit = 200, label?: string) => {
+    const { data } = await api.get<GraphSnapshot>('/api/analytics/grafo', {
+      params: label ? { limit, label } : { limit },
     })
     return data
   },

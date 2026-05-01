@@ -5,7 +5,7 @@ import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import Faker from Faker
+from faker import Faker
 
 OUT_DIR = Path(__file__).parent / "csv"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -296,8 +296,48 @@ def gen_tx_origen_destino(
     origen: list[dict] = []
     destino: list[dict] = []
     cta_ids = [c["cuenta_id"] for c in cuentas]
-    for tx in transacciones:
-        a, b = random.sample(cta_ids, 2)
+    n_cta = len(cta_ids)
+
+    # Plantamos N_RINGS anillos de smurfing: pares de cuentas con TX_PER_DIR
+    # transferencias en cada direccion, todas con monto > 500 y estado
+    # 'completada'. Sin esto, la query de anillos sospechosos retorna 0
+    # resultados porque la asignacion random uniforme casi nunca produce
+    # pares simetricos.
+    N_RINGS = 15
+    TX_PER_DIR = 3
+    half = n_cta // 2
+    pool_a = cta_ids[:half].copy()
+    pool_b = cta_ids[half:].copy()
+    random.shuffle(pool_a)
+    random.shuffle(pool_b)
+    ring_pairs = list(zip(pool_a[:N_RINGS], pool_b[:N_RINGS]))
+
+    ring_assignments: list[tuple[str, str]] = []
+    for a, b in ring_pairs:
+        for _ in range(TX_PER_DIR):
+            ring_assignments.append((a, b))
+            ring_assignments.append((b, a))
+    n_ring_tx = len(ring_assignments)
+
+    # Coverage para el resto: cada cuenta aparece >=1 como ORIGEN y >=1 como
+    # DESTINO en las siguientes n_cta transacciones (asi nadie queda fuera del
+    # componente conexo).
+    shuffled_o = cta_ids.copy()
+    shuffled_d = cta_ids.copy()
+    random.shuffle(shuffled_o)
+    random.shuffle(shuffled_d)
+
+    for i, tx in enumerate(transacciones):
+        if i < n_ring_tx:
+            a, b = ring_assignments[i]
+            tx["monto"] = round(random.uniform(800, 5_000), 2)
+            tx["estado"] = "completada"
+        elif (i - n_ring_tx) < n_cta:
+            j = i - n_ring_tx
+            a = shuffled_o[j]
+            b = shuffled_d[j] if shuffled_d[j] != a else shuffled_d[(j + 1) % n_cta]
+        else:
+            a, b = random.sample(cta_ids, 2)
         origen.append({
             "cuenta_id": a,
             "transaccion_id": tx["transaccion_id"],
@@ -315,46 +355,62 @@ def gen_tx_origen_destino(
     return origen, destino
 
 
+# Round-robin con shuffle: la primera vuelta cubre cada catalog_id al menos
+# una vez para garantizar que ningun nodo quede aislado.
+def _coverage_pick(idx: int, n: int, shuffled: list[str], catalog: list[str]) -> str:
+    return shuffled[idx] if idx < n else random.choice(catalog)
+
+
 def gen_tx_dispositivo(transacciones: list[dict], dispositivos: list[dict]) -> list[dict]:
     dev_ids = [d["dispositivo_id"] for d in dispositivos]
+    shuffled = dev_ids.copy()
+    random.shuffle(shuffled)
     return [
         {
             "transaccion_id": tx["transaccion_id"],
-            "dispositivo_id": random.choice(dev_ids),
+            "dispositivo_id": _coverage_pick(i, len(dev_ids), shuffled, dev_ids),
             "metodo_autenticacion": random.choice(METODOS_AUTH),
             "es_dispositivo_confiable": random.choice([True, False]),
             "intentos": random.randint(1, 5),
         }
-        for tx in transacciones
+        for i, tx in enumerate(transacciones)
     ]
 
 
 def gen_tx_ubicacion(transacciones: list[dict], ubicaciones: list[dict]) -> list[dict]:
     ubi_ids = [u["ubicacion_id"] for u in ubicaciones]
+    shuffled = ubi_ids.copy()
+    random.shuffle(shuffled)
     return [
         {
             "transaccion_id": tx["transaccion_id"],
-            "ubicacion_id": random.choice(ubi_ids),
+            "ubicacion_id": _coverage_pick(i, len(ubi_ids), shuffled, ubi_ids),
             "precision": round(random.uniform(1, 50), 2),
             "es_ubicacion_habitual": random.choice([True, False]),
             "tipo_red": random.choice(TIPOS_RED),
         }
-        for tx in transacciones
+        for i, tx in enumerate(transacciones)
     ]
 
 
 def gen_tx_comercio(transacciones: list[dict], comercios: list[dict]) -> list[dict]:
     com_ids = [c["comercio_id"] for c in comercios]
+    eligibles = [tx for tx in transacciones if tx["tipo"] in ("compra", "pago")]
+    if not eligibles:
+        return []
+    # Si hay menos transacciones elegibles que comercios, cubrimos solo lo que
+    # se pueda y dejamos el resto al fallback de garantia conexa al final.
+    coverage = com_ids.copy()
+    random.shuffle(coverage)
     return [
         {
             "transaccion_id": tx["transaccion_id"],
-            "comercio_id": random.choice(com_ids),
+            "comercio_id": _coverage_pick(i, len(com_ids), coverage, com_ids),
             "es_primera_vez": random.choice([True, False]),
             "monto_propina": round(random.uniform(0, tx["monto"] * 0.15), 2),
             "cantidad_items": random.randint(1, 12),
         }
-        for tx in transacciones
-        if tx["tipo"] in ("compra", "pago")
+        for i, tx in enumerate(eligibles)
     ]
 
 

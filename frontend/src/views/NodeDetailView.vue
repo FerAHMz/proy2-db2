@@ -248,7 +248,7 @@ onMounted(load)
   <div class="space-y-5">
     <div class="flex items-center gap-3 text-sm">
       <RouterLink :to="{ name: 'nodos' }" class="text-brand-600 hover:underline">
-        ← Explorar
+        Explorar
       </RouterLink>
       <span class="text-slate-400">/</span>
       <RouterLink :to="{ name: 'nodos.label', params: { label } }" class="text-brand-600 hover:underline">
@@ -282,10 +282,10 @@ onMounted(load)
           </div>
           <div class="flex items-start gap-3">
             <button class="btn-primary" @click="relCreateOpen = true">
-              ↔ Vincular
+              Vincular
             </button>
             <button class="btn-danger" :disabled="mutating" @click="deleteNode">
-              🗑 Eliminar nodo
+              Eliminar nodo
             </button>
             <div class="text-right text-xs text-slate-500">
               <div>elementId</div>
@@ -303,7 +303,7 @@ onMounted(load)
             <div class="flex items-center gap-2">
               <span class="badge-muted">{{ propsList.length }}</span>
               <button class="btn-secondary text-xs px-2 py-1" @click="openAddDialog">
-                + agregar
+                Agregar propiedad
               </button>
             </div>
           </div>
@@ -326,19 +326,17 @@ onMounted(load)
                 <div class="flex items-center gap-1 shrink-0">
                   <span class="badge-muted text-[10px]">{{ p.type }}</span>
                   <button
-                    class="opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-brand-600 px-1"
-                    title="Editar"
+                    class="opacity-0 group-hover:opacity-100 transition text-xs text-slate-500 hover:text-brand-700 px-1.5 py-0.5 rounded hover:bg-brand-50"
                     @click="openEditDialog(p.key, p.value)"
                   >
-                    ✎
+                    Editar
                   </button>
                   <button
                     v-if="p.key !== ID_FIELD[label]"
-                    class="opacity-0 group-hover:opacity-100 transition text-slate-400 hover:text-rose-600 px-1"
-                    title="Eliminar"
+                    class="opacity-0 group-hover:opacity-100 transition text-xs text-slate-500 hover:text-rose-700 px-1.5 py-0.5 rounded hover:bg-rose-50"
                     @click="deleteProp(p.key)"
                   >
-                    🗑
+                    Eliminar
                   </button>
                 </div>
               </div>
@@ -396,8 +394,8 @@ onMounted(load)
                 <td class="px-4 py-2">
                   <div class="flex items-center gap-1">
                     <span class="badge-info font-mono">{{ c.rel }}</span>
-                    <span class="text-[10px] text-slate-400">
-                      {{ c.dir === 'in' ? '←' : '→' }}
+                    <span class="text-[10px] text-slate-400 uppercase">
+                      {{ c.dir === 'in' ? 'entrante' : 'saliente' }}
                     </span>
                   </div>
                 </td>
@@ -424,34 +422,31 @@ onMounted(load)
                     <span class="text-slate-400">{{ k }}:</span>
                     <span>{{ formatPropValue(v as never) }}</span>
                     <button
-                      class="opacity-0 group-hover/p:opacity-100 text-slate-400 hover:text-rose-600 ml-0.5"
-                      title="Eliminar propiedad"
+                      class="opacity-0 group-hover/p:opacity-100 text-[10px] text-slate-500 hover:text-rose-700 ml-1"
                       @click="deleteRelProp(c, k as string)"
                     >
-                      ×
+                      quitar
                     </button>
                   </div>
                 </td>
                 <td class="px-4 py-2 text-right whitespace-nowrap">
                   <button
-                    class="text-slate-400 hover:text-brand-600 text-xs px-1"
-                    title="Editar / agregar propiedades"
+                    class="text-xs text-slate-500 hover:text-brand-700 px-1.5 py-0.5"
                     @click="openRelProps(c)"
                   >
-                    ✎
+                    Editar
                   </button>
                   <button
-                    class="text-slate-400 hover:text-rose-600 text-xs px-1"
-                    title="Eliminar relación"
+                    class="text-xs text-slate-500 hover:text-rose-700 px-1.5 py-0.5"
                     @click="deleteRelationship(c)"
                   >
-                    🗑
+                    Eliminar
                   </button>
                   <button
                     class="text-brand-600 hover:underline text-xs ml-2"
                     @click="openConnection(c.otherLabels[0], c.other.properties)"
                   >
-                    abrir →
+                    abrir
                   </button>
                 </td>
               </tr>

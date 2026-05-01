@@ -105,9 +105,9 @@ const meetsMin = computed(() =>
         class="input text-sm"
         @input="(e) => update(i, { value: (e.target as HTMLInputElement).value })"
       />
-      <button class="btn-secondary text-xs px-2" @click="remove(i)">×</button>
+      <button class="btn-secondary text-xs" @click="remove(i)">Quitar</button>
     </div>
 
-    <button class="btn-secondary text-xs" @click="add">+ propiedad</button>
+    <button class="btn-secondary text-xs" @click="add">Agregar propiedad</button>
   </div>
 </template>

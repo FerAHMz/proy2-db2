@@ -132,6 +132,68 @@ router.get('/comercios-con-alertas', asyncHandler(async (_req, res) => {
   res.json({ count: rows.length, items: rows });
 }));
 
+router.get('/grafo', asyncHandler(async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || '150', 10), 1500);
+  const label = req.query.label;
+  const seedLabel = label || 'Transaccion';
+
+  // BFS iterativo desde un nodo seed. Hace varias rondas hasta alcanzar el
+  // limite pedido o agotar el componente conexo. Cada ronda es un single
+  // round-trip con IN $ids, asi que es rapido aun en grafos medianos.
+  const seedRows = await read(
+    `MATCH (n:${seedLabel}) RETURN elementId(n) AS id LIMIT 1`,
+    {},
+  );
+  if (!seedRows.length) {
+    return res.json({ node_count: 0, edge_count: 0, nodes: [], edges: [] });
+  }
+  const seedId = seedRows[0].id;
+
+  const visited = new Set([seedId]);
+  let frontier = [seedId];
+  const MAX_ROUNDS = 12;
+  for (let r = 0; r < MAX_ROUNDS && frontier.length && visited.size < limit; r++) {
+    const rows = await read(
+      `MATCH (n)-[]-(m) WHERE elementId(n) IN $ids
+       RETURN collect(DISTINCT elementId(m)) AS next`,
+      { ids: frontier },
+    );
+    const next = rows[0]?.next || [];
+    const room = limit - visited.size;
+    const newOnes = [];
+    for (const id of next) {
+      if (!visited.has(id)) {
+        visited.add(id);
+        newOnes.push(id);
+        if (visited.size >= limit) break;
+      }
+    }
+    frontier = newOnes;
+    if (newOnes.length < room) {
+      // Frontera agotada antes del limite; no quedan nodos alcanzables.
+      if (newOnes.length === 0) break;
+    }
+  }
+
+  const nodeIds = Array.from(visited);
+  const data = await read(
+    `MATCH (n) WHERE elementId(n) IN $ids
+     WITH collect(n) AS nodes
+     UNWIND nodes AS n
+     OPTIONAL MATCH (n)-[r]->(m) WHERE m IN nodes
+     WITH nodes, collect(DISTINCT r) AS rels
+     RETURN nodes, [e IN rels WHERE e IS NOT NULL] AS edges`,
+    { ids: nodeIds },
+  );
+  const out = data[0] || { nodes: [], edges: [] };
+  res.json({
+    node_count: out.nodes.length,
+    edge_count: out.edges.length,
+    nodes: out.nodes,
+    edges: out.edges,
+  });
+}));
+
 router.get('/resumen-grafo', asyncHandler(async (_req, res) => {
   const [labels, rels, totales] = await Promise.all([
     read(Q_RESUMEN_NODOS, {}),

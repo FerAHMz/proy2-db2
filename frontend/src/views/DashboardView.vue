@@ -137,23 +137,14 @@ const comerciosChart = computed(() => {
       </div>
     </section>
 
-    <div class="flex items-center justify-between">
-      <p class="text-sm text-slate-500">
-        8 consultas Cypher · cada presentador puede parametrizar las suyas en vivo.
-      </p>
+    <div class="flex items-center justify-end">
       <button class="btn-secondary" @click="loadAll">Recargar todo</button>
     </div>
 
-    <!-- ===== Bloque 1 — Integrante 1 ===== -->
-    <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider">
-      Bloque 1 · Integrante 1
-    </h2>
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <QueryCard
         title="Resumen del grafo"
-        question="Conteo de nodos por label y relaciones por tipo (KPIs base)."
-        endpoint="/api/analytics/resumen-grafo"
-        presenter="Integrante 1"
+        question="Conteo de nodos por label y relaciones por tipo."
         :loading="resumen.loading"
         :error="resumen.error"
         @reload="loadResumen"
@@ -183,8 +174,6 @@ const comerciosChart = computed(() => {
       <QueryCard
         title="Top clientes por monto"
         question="¿Quién mueve más dinero? — riesgo de lavado."
-        endpoint="/api/analytics/top-clientes-monto"
-        presenter="Integrante 1"
         :count="topClientes.data?.length"
         :loading="topClientes.loading"
         :error="topClientes.error"
@@ -228,8 +217,6 @@ const comerciosChart = computed(() => {
       <QueryCard
         title="Transacciones por canal"
         question="Distribución canal/estado para detectar canales con alto rechazo."
-        endpoint="/api/analytics/transacciones-por-canal"
-        presenter="Integrante 1"
         :count="txCanal.data?.length"
         :loading="txCanal.loading"
         :error="txCanal.error"
@@ -242,18 +229,10 @@ const comerciosChart = computed(() => {
           :height="220"
         />
       </QueryCard>
-    </div>
 
-    <!-- ===== Bloque 2 — Integrante 2 ===== -->
-    <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider pt-2">
-      Bloque 2 · Integrante 2
-    </h2>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <QueryCard
         title="Transacciones desde países de alto riesgo"
         question="Movimientos desde jurisdicciones FATF de alto riesgo."
-        endpoint="/api/analytics/transacciones-pais-riesgo"
-        presenter="Integrante 2"
         :count="txPaisRiesgo.data?.length"
         :loading="txPaisRiesgo.loading"
         :error="txPaisRiesgo.error"
@@ -291,8 +270,6 @@ const comerciosChart = computed(() => {
       <QueryCard
         title="Anillos sospechosos (smurfing)"
         question="Cuentas que se transfieren mutuamente sobre un umbral."
-        endpoint="/api/analytics/anillos-sospechosos"
-        presenter="Integrante 2"
         :count="anillos.data?.length"
         :loading="anillos.loading"
         :error="anillos.error"
@@ -327,8 +304,6 @@ const comerciosChart = computed(() => {
       <QueryCard
         title="Dispositivos compartidos"
         question="Account takeover: dispositivos usados por varios clientes."
-        endpoint="/api/analytics/dispositivos-compartidos"
-        presenter="Integrante 2"
         :count="dispositivos.data?.length"
         :loading="dispositivos.loading"
         :error="dispositivos.error"
@@ -365,18 +340,9 @@ const comerciosChart = computed(() => {
           </table>
         </div>
       </QueryCard>
-    </div>
-
-    <!-- ===== Bloque 3 — Integrante 3 ===== -->
-    <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider pt-2">
-      Bloque 3 · Integrante 3
-    </h2>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
       <QueryCard
         title="Comercios con más alertas"
         question="Comercios que generan más alertas de fraude."
-        endpoint="/api/analytics/comercios-con-alertas"
-        presenter="Integrante 3"
         :count="comercios.data?.length"
         :loading="comercios.loading"
         :error="comercios.error"
@@ -393,8 +359,6 @@ const comerciosChart = computed(() => {
       <QueryCard
         title="Camino entre dos clientes"
         question="shortestPath para descubrir comunidades / colusión entre clientes."
-        endpoint="/api/analytics/path-clientes"
-        presenter="Integrante 3"
         :loading="path.loading"
         :error="path.error"
         @reload="loadPath"
