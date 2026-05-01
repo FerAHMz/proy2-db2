@@ -39,8 +39,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'nodos/crear',
         name: 'nodos.crear',
-        component: () => import('@/views/PlaceholderView.vue'),
-        meta: { title: 'Crear nodo', soon: true },
+        component: () => import('@/views/NodeCreateView.vue'),
+        meta: { title: 'Crear nodo' },
       },
       {
         path: 'relaciones',
