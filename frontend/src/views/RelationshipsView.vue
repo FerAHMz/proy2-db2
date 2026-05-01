@@ -50,7 +50,7 @@ const filterSummary = computed(() => {
 })
 
 // === Bulk modal ===
-type Action = 'set' | 'remove' | null
+type Action = 'set' | 'remove' | 'delete-rels' | null
 const action = ref<Action>(null)
 const setProps = ref<PropEntry[]>([defaultEntry()])
 const removeNames = ref('')
@@ -80,6 +80,12 @@ async function applyBulk() {
       if (!names.length) throw new Error('Indica al menos un nombre de propiedad')
       const res = await relationshipsApi.removePropsBulk(relType.value, f, names)
       result.value = `${res.updated} relación(es) actualizadas.`
+    } else if (action.value === 'delete-rels') {
+      if (!Object.keys(f).length) {
+        throw new Error('El backend exige al menos un filtro para borrar relaciones masivamente (protección).')
+      }
+      const res = await relationshipsApi.deleteBulk(relType.value, f)
+      result.value = `${res.deleted} relación(es) eliminadas.`
     }
     await load()
   } catch (e: unknown) {
@@ -88,6 +94,15 @@ async function applyBulk() {
     busy.value = false
   }
 }
+
+const actionTitle = computed(() => {
+  switch (action.value) {
+    case 'set': return 'Bulk: agregar / actualizar props'
+    case 'remove': return 'Bulk: eliminar props'
+    case 'delete-rels': return 'Bulk: eliminar relaciones'
+    default: return ''
+  }
+})
 </script>
 
 <template>
@@ -151,6 +166,9 @@ async function applyBulk() {
           <button class="btn-secondary text-xs" @click="openAction('remove')">
             ⌫ eliminar props
           </button>
+          <button class="btn-danger text-xs" @click="openAction('delete-rels')">
+            🗑 eliminar relaciones
+          </button>
         </div>
       </div>
     </div>
@@ -209,7 +227,7 @@ async function applyBulk() {
     <!-- Bulk modal -->
     <Modal
       :open="action !== null"
-      :title="action === 'set' ? 'Bulk: agregar / actualizar props' : 'Bulk: eliminar props'"
+      :title="actionTitle"
       size="lg"
       @close="action = null"
     >
@@ -227,9 +245,15 @@ async function applyBulk() {
           <PropertyEditor v-model="setProps" />
         </div>
 
-        <div v-else>
+        <div v-else-if="action === 'remove'">
           <label class="label">Propiedades a eliminar (separadas por coma)</label>
           <input v-model="removeNames" placeholder="ej. revisado_por, fecha_revision" class="input" />
+        </div>
+
+        <div v-else-if="action === 'delete-rels'" class="bg-rose-50 border border-rose-200 rounded-lg p-4 text-sm text-rose-700">
+          <strong>Acción destructiva.</strong> Se eliminarán todas las relaciones
+          <strong>{{ relType }}</strong> que cumplan el filtro de arriba.
+          El backend exige al menos un filtro para evitar borrar todas las relaciones.
         </div>
 
         <div v-if="opError" class="text-sm text-rose-600">{{ opError }}</div>
@@ -238,7 +262,11 @@ async function applyBulk() {
 
       <template #footer>
         <button class="btn-secondary" :disabled="busy" @click="action = null">Cerrar</button>
-        <button class="btn-primary" :disabled="busy" @click="applyBulk">
+        <button
+          :class="action === 'delete-rels' ? 'btn-danger' : 'btn-primary'"
+          :disabled="busy"
+          @click="applyBulk"
+        >
           {{ busy ? 'Aplicando…' : 'Aplicar' }}
         </button>
       </template>

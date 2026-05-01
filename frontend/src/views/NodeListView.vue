@@ -86,8 +86,34 @@ function openDetail(item: NodeListItem) {
   router.push({ name: 'nodos.detail', params: { label: label.value, id } })
 }
 
+// === Selection (for multi-delete) ===
+const selectedIds = ref<Set<string>>(new Set())
+
+function toggleRow(item: NodeListItem) {
+  const id = String(item.n.properties[idField.value])
+  if (selectedIds.value.has(id)) selectedIds.value.delete(id)
+  else selectedIds.value.add(id)
+  selectedIds.value = new Set(selectedIds.value)
+}
+
+function toggleAll() {
+  if (selectedIds.value.size === items.value.length) {
+    selectedIds.value = new Set()
+  } else {
+    selectedIds.value = new Set(items.value.map((it) => String(it.n.properties[idField.value])))
+  }
+}
+
+function isSelected(item: NodeListItem) {
+  return selectedIds.value.has(String(item.n.properties[idField.value]))
+}
+
+watch([label, skip, limit], () => {
+  selectedIds.value = new Set()
+})
+
 // === Bulk actions ===
-type BulkMode = 'set' | 'remove' | null
+type BulkMode = 'set' | 'remove' | 'delete-ids' | 'delete-filter' | null
 const bulkMode = ref<BulkMode>(null)
 const bulkProps = ref<PropEntry[]>([defaultEntry()])
 const bulkRemoveNames = ref<string>('')
@@ -121,6 +147,18 @@ async function submitBulk() {
       if (!names.length) throw new Error('Indica al menos una propiedad')
       const res = await nodesApi.removePropsBulk(label.value, filter, names)
       bulkResult.value = `${res.updated} nodo(s) actualizados.`
+    } else if (bulkMode.value === 'delete-ids') {
+      const ids = Array.from(selectedIds.value)
+      if (!ids.length) throw new Error('Selecciona al menos un nodo')
+      const res = await nodesApi.deleteBulk(label.value, { ids })
+      bulkResult.value = `${res.deleted} nodo(s) eliminados.`
+      selectedIds.value = new Set()
+    } else if (bulkMode.value === 'delete-filter') {
+      if (!Object.keys(filter).length) {
+        throw new Error('Aplica al menos un filtro para borrar masivamente (protección).')
+      }
+      const res = await nodesApi.deleteBulk(label.value, { filter })
+      bulkResult.value = `${res.deleted} nodo(s) eliminados.`
     }
     await load()
   } catch (e: unknown) {
@@ -129,6 +167,16 @@ async function submitBulk() {
     bulkBusy.value = false
   }
 }
+
+const bulkTitle = computed(() => {
+  switch (bulkMode.value) {
+    case 'set': return 'Acción masiva: agregar / actualizar propiedades'
+    case 'remove': return 'Acción masiva: eliminar propiedades'
+    case 'delete-ids': return `Eliminar ${selectedIds.value.size} nodo(s) seleccionados`
+    case 'delete-filter': return 'Eliminar nodos por filtro'
+    default: return ''
+  }
+})
 
 const filterSummary = computed(() => {
   const obj = whereObject()
@@ -211,12 +259,22 @@ onMounted(load)
           {{ items.length === 1 ? 'fila' : 'filas' }}
           · skip {{ fmtNum(skip) }}
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <button class="btn-secondary text-xs" @click="openBulk('set')">
             ⚙ etiquetar selección
           </button>
           <button class="btn-secondary text-xs" @click="openBulk('remove')">
             ⌫ limpiar campo
+          </button>
+          <button
+            class="btn-danger text-xs"
+            :disabled="!selectedIds.size"
+            @click="openBulk('delete-ids')"
+          >
+            🗑 eliminar selección ({{ selectedIds.size }})
+          </button>
+          <button class="btn-danger text-xs" @click="openBulk('delete-filter')">
+            🗑 eliminar por filtro
           </button>
           <span class="w-px h-5 bg-slate-200 mx-1" />
           <button class="btn-secondary text-xs" :disabled="skip === 0 || loading" @click="prevPage">
@@ -237,6 +295,13 @@ onMounted(load)
         <table v-else class="min-w-full text-sm">
           <thead class="bg-slate-50 border-b border-slate-200">
             <tr>
+              <th class="px-3 py-2 w-8">
+                <input
+                  type="checkbox"
+                  :checked="items.length > 0 && selectedIds.size === items.length"
+                  @change="toggleAll"
+                />
+              </th>
               <th class="px-4 py-2 text-left text-xs uppercase tracking-wider text-slate-500">
                 Labels
               </th>
@@ -254,10 +319,17 @@ onMounted(load)
             <tr
               v-for="(item, i) in items"
               :key="i"
-              class="border-b border-slate-100 hover:bg-brand-50/40 cursor-pointer"
-              @click="openDetail(item)"
+              class="border-b border-slate-100 hover:bg-brand-50/40"
+              :class="isSelected(item) ? 'bg-brand-50/60' : ''"
             >
-              <td class="px-4 py-2">
+              <td class="px-3 py-2 w-8" @click.stop>
+                <input
+                  type="checkbox"
+                  :checked="isSelected(item)"
+                  @change="toggleRow(item)"
+                />
+              </td>
+              <td class="px-4 py-2 cursor-pointer" @click="openDetail(item)">
                 <span
                   v-for="l in item.labels"
                   :key="l"
@@ -269,14 +341,15 @@ onMounted(load)
               <td
                 v-for="col in columns"
                 :key="col"
-                class="px-4 py-2 text-slate-700 max-w-[280px] truncate"
+                class="px-4 py-2 text-slate-700 max-w-[280px] truncate cursor-pointer"
+                @click="openDetail(item)"
               >
                 <span v-if="col === idField" class="font-mono text-xs">
                   {{ formatPropValue(item.n.properties[col]) }}
                 </span>
                 <span v-else>{{ formatPropValue(item.n.properties[col]) }}</span>
               </td>
-              <td class="px-4 py-2 text-right text-brand-600 text-xs">→</td>
+              <td class="px-4 py-2 text-right text-brand-600 text-xs cursor-pointer" @click="openDetail(item)">→</td>
             </tr>
           </tbody>
         </table>
@@ -286,12 +359,15 @@ onMounted(load)
     <!-- Bulk modal -->
     <Modal
       :open="bulkMode !== null"
-      :title="bulkMode === 'set' ? 'Acción masiva: agregar / actualizar propiedades' : 'Acción masiva: eliminar propiedades'"
+      :title="bulkTitle"
       size="lg"
       @close="bulkMode = null"
     >
       <div class="space-y-4">
-        <div class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm">
+        <div
+          v-if="bulkMode !== 'delete-ids'"
+          class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm"
+        >
           <div class="text-xs uppercase tracking-wider text-slate-500 mb-1">
             Filtro aplicado
           </div>
@@ -300,15 +376,12 @@ onMounted(load)
             {{ filterSummary }}
           </div>
           <p class="text-xs text-slate-500 mt-2">
-            Se aplica a TODOS los nodos que cumplen el filtro actual de la tabla.
-            Modifica los filtros y vuelve a abrir el diálogo si quieres acotar.
+            Se aplica a TODOS los nodos que cumplen el filtro actual.
           </p>
         </div>
 
         <div v-if="bulkMode === 'set'">
-          <h4 class="text-sm font-semibold text-slate-700 mb-2">
-            Propiedades a aplicar
-          </h4>
+          <h4 class="text-sm font-semibold text-slate-700 mb-2">Propiedades a aplicar</h4>
           <PropertyEditor v-model="bulkProps" />
         </div>
 
@@ -321,13 +394,36 @@ onMounted(load)
           />
         </div>
 
+        <div v-else-if="bulkMode === 'delete-ids'" class="space-y-3">
+          <div class="bg-rose-50 border border-rose-200 rounded-lg p-4 text-sm text-rose-700">
+            <strong>Acción destructiva.</strong> Se eliminarán definitivamente
+            <strong>{{ selectedIds.size }}</strong> nodo(s) {{ label }}
+            con todas sus relaciones (DETACH DELETE).
+          </div>
+          <div class="text-xs text-slate-500 max-h-32 overflow-y-auto font-mono space-y-0.5">
+            <div v-for="id in Array.from(selectedIds)" :key="id">{{ id }}</div>
+          </div>
+        </div>
+
+        <div v-else-if="bulkMode === 'delete-filter'" class="space-y-2">
+          <div class="bg-rose-50 border border-rose-200 rounded-lg p-4 text-sm text-rose-700">
+            <strong>Acción destructiva.</strong> Se eliminarán todos los nodos
+            <strong>{{ label }}</strong> que cumplan el filtro mostrado arriba
+            (DETACH DELETE).
+          </div>
+        </div>
+
         <div v-if="bulkError" class="text-sm text-rose-600">{{ bulkError }}</div>
         <div v-if="bulkResult" class="text-sm text-emerald-600">{{ bulkResult }}</div>
       </div>
 
       <template #footer>
         <button class="btn-secondary" :disabled="bulkBusy" @click="bulkMode = null">Cerrar</button>
-        <button class="btn-primary" :disabled="bulkBusy" @click="submitBulk">
+        <button
+          :class="bulkMode && bulkMode.startsWith('delete') ? 'btn-danger' : 'btn-primary'"
+          :disabled="bulkBusy"
+          @click="submitBulk"
+        >
           {{ bulkBusy ? 'Aplicando…' : 'Aplicar' }}
         </button>
       </template>

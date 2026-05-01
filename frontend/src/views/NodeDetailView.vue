@@ -191,6 +191,20 @@ async function deleteRelationship(c: NodeConnection) {
   }
 }
 
+async function deleteNode() {
+  if (!confirm(`Eliminar definitivamente ${label.value} ${id.value}? Se eliminarán también todas sus relaciones (DETACH).`)) return
+  mutating.value = true
+  mutationError.value = null
+  try {
+    await nodesApi.delete(label.value, id.value)
+    router.push({ name: 'nodos.label', params: { label: label.value } })
+  } catch (e: unknown) {
+    mutationError.value = e instanceof Error ? e.message : 'Error al eliminar el nodo'
+  } finally {
+    mutating.value = false
+  }
+}
+
 async function deleteProp(key: string) {
   if (key === ID_FIELD[label.value]) {
     mutationError.value = 'No se puede borrar el id field del nodo.'
@@ -257,6 +271,9 @@ onMounted(load)
           <div class="flex items-start gap-3">
             <button class="btn-primary" @click="relCreateOpen = true">
               ↔ Vincular
+            </button>
+            <button class="btn-danger" :disabled="mutating" @click="deleteNode">
+              🗑 Eliminar nodo
             </button>
             <div class="text-right text-xs text-slate-500">
               <div>elementId</div>
