@@ -111,13 +111,15 @@ router.get('/:label/:id', asyncHandler(async (req, res) => {
     `
       MATCH (n:${label} {${idField}: $id})
       OPTIONAL MATCH (n)-[r]-(m)
-      WITH n, r, m
+      WITH n, r, m,
+           CASE WHEN r IS NULL THEN NULL
+                WHEN startNode(r) = n THEN 'out' ELSE 'in' END AS dir
       WHERE r IS NOT NULL OR m IS NULL
       RETURN n,
              labels(n) AS labels,
              [x IN collect(
                CASE WHEN r IS NULL THEN NULL
-                    ELSE { rel: type(r), props: properties(r), other: m, otherLabels: labels(m) }
+                    ELSE { rel: type(r), dir: dir, props: properties(r), other: m, otherLabels: labels(m) }
                END
              ) WHERE x IS NOT NULL] AS connections
     `,

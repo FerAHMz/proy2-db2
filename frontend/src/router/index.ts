@@ -45,8 +45,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'relaciones',
         name: 'relaciones',
-        component: () => import('@/views/PlaceholderView.vue'),
-        meta: { title: 'Auditoría de relaciones', soon: true },
+        component: () => import('@/views/RelationshipsView.vue'),
+        meta: { title: 'Auditoría de relaciones' },
       },
       {
         path: 'csv',

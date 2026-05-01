@@ -6,6 +6,9 @@ import { ID_FIELD, PRIMARY_LABELS, type PrimaryLabel } from '@/api/schema'
 import { detectType, formatPropValue } from '@/lib/props'
 import GraphView from '@/components/GraphView.vue'
 import PropEditDialog from '@/components/PropEditDialog.vue'
+import RelCreateDialog from '@/components/RelCreateDialog.vue'
+import { relationshipsApi, type RelEndpoint } from '@/api/relationships'
+import type { NodeConnection } from '@/api/nodes'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,6 +124,73 @@ async function handleSubmit(payload: Record<string, unknown>) {
   }
 }
 
+// === Relationship UI ===
+const relCreateOpen = ref(false)
+const relPropsDialogOpen = ref(false)
+const relPropsTarget = ref<NodeConnection | null>(null)
+
+function relEndpoints(c: NodeConnection): { from: RelEndpoint; to: RelEndpoint } {
+  const idF = ID_FIELD[label.value]
+  const otherIdF = otherLabelToId(c.otherLabels[0])
+  const me: RelEndpoint = { label: label.value, id: id.value }
+  const other: RelEndpoint = {
+    label: c.otherLabels[0],
+    id: otherIdF ? String(c.other.properties[otherIdF]) : '',
+  }
+  return c.dir === 'in' ? { from: other, to: me } : { from: me, to: other }
+  // unused: idF kept for future use
+  void idF
+}
+
+function otherLabelToId(label: string): string | undefined {
+  return (PRIMARY_LABELS as readonly string[]).includes(label)
+    ? ID_FIELD[label as PrimaryLabel]
+    : undefined
+}
+
+function openRelProps(c: NodeConnection) {
+  relPropsTarget.value = c
+  relPropsDialogOpen.value = true
+}
+
+async function submitRelProps(payload: Record<string, unknown>) {
+  if (!relPropsTarget.value) return
+  mutating.value = true
+  mutationError.value = null
+  try {
+    const { from, to } = relEndpoints(relPropsTarget.value)
+    await relationshipsApi.patchProps(relPropsTarget.value.rel, from, to, payload)
+    relPropsDialogOpen.value = false
+    await load()
+  } catch (e: unknown) {
+    mutationError.value = e instanceof Error ? e.message : 'Error al actualizar la relación'
+  } finally {
+    mutating.value = false
+  }
+}
+
+async function deleteRelProp(c: NodeConnection, key: string) {
+  if (!confirm(`Eliminar la propiedad "${key}" de la relación ${c.rel}?`)) return
+  try {
+    const { from, to } = relEndpoints(c)
+    await relationshipsApi.removeProps(c.rel, from, to, [key])
+    await load()
+  } catch (e: unknown) {
+    mutationError.value = e instanceof Error ? e.message : 'Error al eliminar'
+  }
+}
+
+async function deleteRelationship(c: NodeConnection) {
+  if (!confirm(`Eliminar la relación ${c.rel} hacia ${c.otherLabels[0]}?`)) return
+  try {
+    const { from, to } = relEndpoints(c)
+    await relationshipsApi.delete(c.rel, from, to)
+    await load()
+  } catch (e: unknown) {
+    mutationError.value = e instanceof Error ? e.message : 'Error al eliminar la relación'
+  }
+}
+
 async function deleteProp(key: string) {
   if (key === ID_FIELD[label.value]) {
     mutationError.value = 'No se puede borrar el id field del nodo.'
@@ -184,9 +254,14 @@ onMounted(load)
               </span>
             </div>
           </div>
-          <div class="text-right text-xs text-slate-500">
-            <div>elementId</div>
-            <div class="font-mono">{{ data.n._id }}</div>
+          <div class="flex items-start gap-3">
+            <button class="btn-primary" @click="relCreateOpen = true">
+              ↔ Vincular
+            </button>
+            <div class="text-right text-xs text-slate-500">
+              <div>elementId</div>
+              <div class="font-mono">{{ data.n._id }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -287,10 +362,15 @@ onMounted(load)
               <tr
                 v-for="(c, i) in data.connections"
                 :key="i"
-                class="border-b border-slate-100 hover:bg-slate-50"
+                class="border-b border-slate-100 hover:bg-slate-50 group"
               >
                 <td class="px-4 py-2">
-                  <span class="badge-info font-mono">{{ c.rel }}</span>
+                  <div class="flex items-center gap-1">
+                    <span class="badge-info font-mono">{{ c.rel }}</span>
+                    <span class="text-[10px] text-slate-400">
+                      {{ c.dir === 'in' ? '←' : '→' }}
+                    </span>
+                  </div>
                 </td>
                 <td class="px-4 py-2">
                   <div class="flex items-center gap-1.5">
@@ -307,13 +387,39 @@ onMounted(load)
                   </div>
                 </td>
                 <td class="px-4 py-2 text-xs text-slate-600">
-                  <div v-for="(v, k) in c.props" :key="k" class="font-mono">
-                    <span class="text-slate-400">{{ k }}:</span> {{ formatPropValue(v as never) }}
+                  <div
+                    v-for="(v, k) in c.props"
+                    :key="k"
+                    class="font-mono flex items-center gap-1 group/p"
+                  >
+                    <span class="text-slate-400">{{ k }}:</span>
+                    <span>{{ formatPropValue(v as never) }}</span>
+                    <button
+                      class="opacity-0 group-hover/p:opacity-100 text-slate-400 hover:text-rose-600 ml-0.5"
+                      title="Eliminar propiedad"
+                      @click="deleteRelProp(c, k as string)"
+                    >
+                      ×
+                    </button>
                   </div>
                 </td>
-                <td class="px-4 py-2 text-right">
+                <td class="px-4 py-2 text-right whitespace-nowrap">
                   <button
-                    class="text-brand-600 hover:underline text-xs"
+                    class="text-slate-400 hover:text-brand-600 text-xs px-1"
+                    title="Editar / agregar propiedades"
+                    @click="openRelProps(c)"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    class="text-slate-400 hover:text-rose-600 text-xs px-1"
+                    title="Eliminar relación"
+                    @click="deleteRelationship(c)"
+                  >
+                    🗑
+                  </button>
+                  <button
+                    class="text-brand-600 hover:underline text-xs ml-2"
                     @click="openConnection(c.otherLabels[0], c.other.properties)"
                   >
                     abrir →
@@ -335,6 +441,23 @@ onMounted(load)
       :busy="mutating"
       @close="dialogOpen = false"
       @submit="handleSubmit"
+    />
+
+    <PropEditDialog
+      :open="relPropsDialogOpen"
+      mode="many"
+      :title="relPropsTarget ? `Propiedades de relación ${relPropsTarget.rel}` : ''"
+      :busy="mutating"
+      @close="relPropsDialogOpen = false"
+      @submit="submitRelProps"
+    />
+
+    <RelCreateDialog
+      :open="relCreateOpen"
+      :from-label="label"
+      :from-id="id"
+      @close="relCreateOpen = false"
+      @created="load"
     />
   </div>
 </template>

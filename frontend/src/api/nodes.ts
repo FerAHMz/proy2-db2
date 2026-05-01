@@ -22,6 +22,8 @@ export interface NodeListResponse {
 
 export interface NodeConnection {
   rel: RelType | string
+  /** "out" if the current node is the start of the relationship, "in" otherwise. */
+  dir?: 'out' | 'in'
   props: Record<string, PropValue>
   other: NodeData
   otherLabels: string[]
