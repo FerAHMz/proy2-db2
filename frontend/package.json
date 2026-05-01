@@ -9,8 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/papaparse": "^5.5.2",
     "axios": "^1.15.2",
     "chart.js": "^4.5.1",
+    "papaparse": "^5.5.3",
     "pinia": "^3.0.4",
     "vis-data": "^8.0.3",
     "vis-network": "^10.0.2",
