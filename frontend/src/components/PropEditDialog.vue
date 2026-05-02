@@ -47,6 +47,15 @@ watch(
   { immediate: true },
 )
 
+// Si el usuario cambia el tipo a boolean, defaulta a 'true' para que el
+// select muestre el valor real (sin esto coerceValue('boolean', '') -> false
+// y se actualizaba a false aunque visualmente decia true).
+watch(type, (t) => {
+  if (t === 'boolean' && value.value !== 'true' && value.value !== 'false') {
+    value.value = 'true'
+  }
+})
+
 const valid = computed(() => {
   if (props.mode === 'single') {
     return name.value.trim().length > 0

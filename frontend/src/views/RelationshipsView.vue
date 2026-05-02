@@ -2,10 +2,11 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { REL_TYPES, type RelType } from '@/api/schema'
 import { relationshipsApi, type RelData } from '@/api/relationships'
-import { formatPropValue } from '@/lib/props'
+import { detectType, formatPropValue } from '@/lib/props'
 import Modal from '@/components/Modal.vue'
-import PropertyEditor from '@/components/PropertyEditor.vue'
+import PropertyEditor, { type PropSuggestion } from '@/components/PropertyEditor.vue'
 import { defaultEntry, entriesToObject, type PropEntry } from '@/lib/coerce'
+import type { PropType } from '@/api/schema'
 
 const relType = ref<RelType>('POSEE')
 const items = ref<RelData[]>([])
@@ -103,6 +104,30 @@ const actionTitle = computed(() => {
     default: return ''
   }
 })
+
+// Compute existing properties from the loaded sample so the user can pick
+// existing names to update them (instead of typing/guessing the name).
+const existingProps = computed<PropSuggestion[]>(() => {
+  const map = new Map<string, { type: PropType; count: number }>()
+  for (const it of items.value) {
+    for (const [k, v] of Object.entries(it.props)) {
+      if (!map.has(k)) {
+        map.set(k, { type: detectType(v) as PropType, count: 1 })
+      } else {
+        map.get(k)!.count++
+      }
+    }
+  }
+  return Array.from(map.entries())
+    .map(([name, { type, count }]) => ({ name, type, count }))
+    .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+})
+
+function addExistingToRemoveList(name: string) {
+  const set = new Set(removeNames.value.split(',').map((s) => s.trim()).filter(Boolean))
+  set.add(name)
+  removeNames.value = Array.from(set).join(', ')
+}
 </script>
 
 <template>
@@ -242,12 +267,27 @@ const actionTitle = computed(() => {
 
         <div v-if="action === 'set'">
           <h4 class="text-sm font-semibold text-slate-700 mb-2">Propiedades a aplicar</h4>
-          <PropertyEditor v-model="setProps" />
+          <PropertyEditor v-model="setProps" :suggestions="existingProps" />
         </div>
 
-        <div v-else-if="action === 'remove'">
+        <div v-else-if="action === 'remove'" class="space-y-2">
           <label class="label">Propiedades a eliminar (separadas por coma)</label>
           <input v-model="removeNames" placeholder="ej. revisado_por, fecha_revision" class="input" />
+          <div v-if="existingProps.length" class="text-xs text-slate-500">
+            Existentes (click para agregar):
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="s in existingProps"
+              :key="s.name"
+              type="button"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 hover:border-brand-400 hover:bg-brand-50 text-xs text-slate-700 transition"
+              @click="addExistingToRemoveList(s.name)"
+            >
+              <span class="font-mono">{{ s.name }}</span>
+              <span class="text-[10px] text-slate-400">{{ s.type }}</span>
+            </button>
+          </div>
         </div>
 
         <div v-else-if="action === 'delete-rels'" class="bg-rose-50 border border-rose-200 rounded-lg p-4 text-sm text-rose-700">

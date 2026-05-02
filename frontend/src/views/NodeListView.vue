@@ -3,11 +3,12 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { nodesApi, type NodeListItem } from '@/api/nodes'
 import { ID_FIELD, PRIMARY_LABELS, type PrimaryLabel } from '@/api/schema'
-import { formatPropValue, pickColumns } from '@/lib/props'
+import { detectType, formatPropValue, pickColumns } from '@/lib/props'
 import { fmtNum } from '@/lib/format'
 import Modal from '@/components/Modal.vue'
-import PropertyEditor from '@/components/PropertyEditor.vue'
+import PropertyEditor, { type PropSuggestion } from '@/components/PropertyEditor.vue'
 import { defaultEntry, entriesToObject, type PropEntry } from '@/lib/coerce'
+import type { PropType } from '@/api/schema'
 
 const route = useRoute()
 const router = useRouter()
@@ -166,6 +167,28 @@ async function submitBulk() {
   } finally {
     bulkBusy.value = false
   }
+}
+
+const existingProps = computed<PropSuggestion[]>(() => {
+  const map = new Map<string, { type: PropType; count: number }>()
+  for (const it of items.value) {
+    for (const [k, v] of Object.entries(it.n.properties)) {
+      if (!map.has(k)) {
+        map.set(k, { type: detectType(v) as PropType, count: 1 })
+      } else {
+        map.get(k)!.count++
+      }
+    }
+  }
+  return Array.from(map.entries())
+    .map(([name, { type, count }]) => ({ name, type, count }))
+    .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+})
+
+function addExistingToRemoveList(name: string) {
+  const set = new Set(bulkRemoveNames.value.split(',').map((s) => s.trim()).filter(Boolean))
+  set.add(name)
+  bulkRemoveNames.value = Array.from(set).join(', ')
 }
 
 const bulkTitle = computed(() => {
@@ -382,16 +405,31 @@ onMounted(load)
 
         <div v-if="bulkMode === 'set'">
           <h4 class="text-sm font-semibold text-slate-700 mb-2">Propiedades a aplicar</h4>
-          <PropertyEditor v-model="bulkProps" />
+          <PropertyEditor v-model="bulkProps" :suggestions="existingProps" />
         </div>
 
-        <div v-else-if="bulkMode === 'remove'">
+        <div v-else-if="bulkMode === 'remove'" class="space-y-2">
           <label class="label">Propiedades a eliminar (separadas por coma)</label>
           <input
             v-model="bulkRemoveNames"
             placeholder="ej. revisado, motivo_alerta"
             class="input"
           />
+          <div v-if="existingProps.length" class="text-xs text-slate-500">
+            Existentes (click para agregar):
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="s in existingProps"
+              :key="s.name"
+              type="button"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 hover:border-brand-400 hover:bg-brand-50 text-xs text-slate-700 transition"
+              @click="addExistingToRemoveList(s.name)"
+            >
+              <span class="font-mono">{{ s.name }}</span>
+              <span class="text-[10px] text-slate-400">{{ s.type }}</span>
+            </button>
+          </div>
         </div>
 
         <div v-else-if="bulkMode === 'delete-ids'" class="space-y-3">
