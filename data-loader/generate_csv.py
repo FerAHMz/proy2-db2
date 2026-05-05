@@ -486,7 +486,6 @@ def run() -> None:
     write_csv("dispositivos.csv", dispositivos)
     write_csv("ubicaciones.csv", ubicaciones)
     write_csv("comercios.csv", comercios)
-    write_csv("transacciones.csv", transacciones)
     write_csv("alertas.csv", alertas)
 
     print("\nGenerando relaciones...")
@@ -500,6 +499,7 @@ def run() -> None:
     genera = gen_cuenta_genera_alerta(cuentas, alertas)
     generada_por = gen_alerta_generada_por_tx(alertas, transacciones)
 
+    write_csv("transacciones.csv", transacciones)
     write_csv("rel_posee.csv", posee)
     write_csv("rel_tiene_tarjeta.csv", tiene_tarjeta)
     write_csv("rel_origen.csv", origen)

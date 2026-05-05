@@ -2,13 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { analyticsApi, type GraphSnapshot } from '@/api/analytics'
-import { ID_FIELD, PRIMARY_LABELS, type PrimaryLabel } from '@/api/schema'
+import { ID_FIELD, PRIMARY_LABELS } from '@/api/schema'
 import GraphView from '@/components/GraphView.vue'
 import { fmtNum } from '@/lib/format'
 
 const router = useRouter()
 const limit = ref(200)
-const labelFilter = ref<'' | PrimaryLabel>('')
 const data = ref<GraphSnapshot | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -17,10 +16,7 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    data.value = await analyticsApi.grafo(
-      limit.value,
-      labelFilter.value || undefined,
-    )
+    data.value = await analyticsApi.grafo(limit.value)
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Error al consultar el grafo'
   } finally {
@@ -100,7 +96,7 @@ function onSelectNode(visId: string) {
     </div>
 
     <div class="card">
-      <div class="card-body grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div class="card-body grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
         <div>
           <label class="label">Nodos a muestrear</label>
           <select v-model.number="limit" class="input">
@@ -109,14 +105,12 @@ function onSelectNode(visId: string) {
             <option :value="200">200 nodos</option>
             <option :value="400">400 nodos</option>
             <option :value="800">800 nodos</option>
+            <option :value="2000">2,000 nodos</option>
+            <option :value="6000">6,000 nodos (todo el grafo)</option>
           </select>
-        </div>
-        <div>
-          <label class="label">Filtrar por label</label>
-          <select v-model="labelFilter" class="input">
-            <option value="">Todos los labels</option>
-            <option v-for="l in PRIMARY_LABELS" :key="l" :value="l">{{ l }}</option>
-          </select>
+          <p v-if="limit >= 2000" class="text-[11px] text-amber-600 mt-1">
+            Renderizar muchos nodos puede tardar varios segundos.
+          </p>
         </div>
         <div class="md:col-span-2 flex justify-end">
           <button class="btn-primary" :disabled="loading" @click="load">

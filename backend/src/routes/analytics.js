@@ -40,16 +40,31 @@ const Q_TX_PAIS_RIESGO = `
   ORDER BY monto_total DESC
 `;
 
+// Detecta pares de cuentas con transferencias mutuas (smurfing).
+// - cuenta_a < cuenta_b dedupea el par (sin esto sale A->B y B->A como dos rows)
+// - DISTINCT en collect evita el producto cartesiano que inflaba el volumen
+//   (antes: 3 tx ida x 3 tx regreso = 9 rows, sum() contaba cada tx 3 veces)
+// - Min monto filtra por tx individual (cada tx del ring debe superar el umbral)
 const Q_ANILLOS = `
-  MATCH (c1:Cuenta)-[:ORIGEN]->(t1:Transaccion)-[:DESTINO]->(c2:Cuenta),
-        (c2)-[:ORIGEN]->(t2:Transaccion)-[:DESTINO]->(c1)
-  WHERE t1.monto > $minMonto AND t2.monto > $minMonto
-    AND t1.transaccion_id <> t2.transaccion_id
-  RETURN c1.cuenta_id AS cuenta_a,
-         c2.cuenta_id AS cuenta_b,
-         collect({tx: t1.transaccion_id, monto: t1.monto, fecha: toString(t1.fecha_hora)})[..3] AS ida,
-         collect({tx: t2.transaccion_id, monto: t2.monto, fecha: toString(t2.fecha_hora)})[..3] AS regreso,
-         round(sum(t1.monto + t2.monto), 2) AS volumen_total
+  MATCH (c1:Cuenta)-[:ORIGEN]->(t1:Transaccion)-[:DESTINO]->(c2:Cuenta)
+  WHERE t1.monto > $minMonto AND c1.cuenta_id < c2.cuenta_id
+  WITH c1, c2, collect(DISTINCT t1) AS txs_ida
+  MATCH (c2)-[:ORIGEN]->(t2:Transaccion)-[:DESTINO]->(c1)
+  WHERE t2.monto > $minMonto
+  WITH c1, c2, txs_ida, collect(DISTINCT t2) AS txs_regreso
+  WHERE size(txs_ida) > 0 AND size(txs_regreso) > 0
+  WITH c1.cuenta_id AS cuenta_a,
+       c2.cuenta_id AS cuenta_b,
+       [t IN txs_ida    | {tx: t.transaccion_id, monto: t.monto, fecha: toString(t.fecha_hora)}] AS ida_full,
+       [t IN txs_regreso | {tx: t.transaccion_id, monto: t.monto, fecha: toString(t.fecha_hora)}] AS regreso_full,
+       reduce(s = 0.0, t IN txs_ida + txs_regreso | s + t.monto) AS volumen
+  RETURN cuenta_a,
+         cuenta_b,
+         ida_full[..3]    AS ida,
+         regreso_full[..3] AS regreso,
+         size(ida_full)    AS num_ida,
+         size(regreso_full) AS num_regreso,
+         round(volumen, 2) AS volumen_total
   ORDER BY volumen_total DESC
   LIMIT 25
 `;
@@ -133,7 +148,7 @@ router.get('/comercios-con-alertas', asyncHandler(async (_req, res) => {
 }));
 
 router.get('/grafo', asyncHandler(async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit || '150', 10), 1500);
+  const limit = Math.min(parseInt(req.query.limit || '150', 10), 6000);
   const label = req.query.label;
   const seedLabel = label || 'Transaccion';
 

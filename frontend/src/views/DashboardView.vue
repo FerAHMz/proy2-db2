@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   analyticsApi,
   type AnilloSospechoso,
@@ -13,6 +13,7 @@ import {
 } from '@/api/analytics'
 import QueryCard from '@/components/QueryCard.vue'
 import BarChart from '@/components/BarChart.vue'
+import Modal from '@/components/Modal.vue'
 import { fmtMoney, fmtNum, fmtScore } from '@/lib/format'
 
 interface QueryState<T> {
@@ -70,6 +71,9 @@ async function loadPath() {
   }
   await call(path, () => analyticsApi.pathClientes(params.pathFrom, params.pathTo, params.pathMax))
 }
+
+// Drilldown: dispositivo compartido -> lista de clientes
+const dispDrilldown = ref<DispositivoCompartido | null>(null)
 
 function loadAll() {
   loadResumen()
@@ -269,7 +273,7 @@ const comerciosChart = computed(() => {
 
       <QueryCard
         title="Anillos sospechosos (smurfing)"
-        question="Cuentas que se transfieren mutuamente sobre un umbral."
+        question="Pares de cuentas con transferencias mutuas. Min monto = umbral por transacción individual."
         :count="anillos.data?.length"
         :loading="anillos.loading"
         :error="anillos.error"
@@ -277,7 +281,7 @@ const comerciosChart = computed(() => {
       >
         <template #params>
           <div>
-            <label class="label">Min monto</label>
+            <label class="label">Min monto por tx</label>
             <input v-model.number="params.anillosMin" type="number" min="0" step="100"
                    class="input w-32" @change="loadAnillos" />
           </div>
@@ -295,7 +299,7 @@ const comerciosChart = computed(() => {
               <span class="badge-err">{{ fmtMoney(a.volumen_total) }}</span>
             </div>
             <div class="text-[11px] text-slate-500 mt-1">
-              Ida: {{ a.ida.length }} tx · Regreso: {{ a.regreso.length }} tx
+              Ida: {{ a.num_ida }} tx · Regreso: {{ a.num_regreso }} tx · volumen sumado
             </div>
           </li>
         </ul>
@@ -333,7 +337,13 @@ const comerciosChart = computed(() => {
                 <td class="py-1.5 pr-3">{{ d.tipo }}</td>
                 <td class="py-1.5 pr-3">{{ d.sistema_op }}</td>
                 <td class="py-1.5 text-right">
-                  <span class="badge-warn">{{ d.num_clientes }}</span>
+                  <button
+                    class="badge-warn hover:bg-amber-200 transition cursor-pointer"
+                    title="Ver clientes que comparten este dispositivo"
+                    @click="dispDrilldown = d"
+                  >
+                    {{ d.num_clientes }}
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -406,5 +416,61 @@ const comerciosChart = computed(() => {
         </div>
       </QueryCard>
     </div>
+
+    <Modal
+      :open="dispDrilldown !== null"
+      :title="dispDrilldown ? `Clientes que comparten ${dispDrilldown.dispositivo}` : ''"
+      size="md"
+      @close="dispDrilldown = null"
+    >
+      <div v-if="dispDrilldown" class="space-y-3">
+        <div class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm">
+          <div class="grid grid-cols-3 gap-3 text-xs">
+            <div>
+              <div class="uppercase tracking-wider text-slate-500">Tipo</div>
+              <div class="text-slate-800 mt-0.5">{{ dispDrilldown.tipo }}</div>
+            </div>
+            <div>
+              <div class="uppercase tracking-wider text-slate-500">Sistema operativo</div>
+              <div class="text-slate-800 mt-0.5">{{ dispDrilldown.sistema_op }}</div>
+            </div>
+            <div>
+              <div class="uppercase tracking-wider text-slate-500">Total clientes</div>
+              <div class="text-slate-800 mt-0.5 font-semibold">{{ dispDrilldown.num_clientes }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-xs text-slate-500 mb-2">
+            Mostrando {{ dispDrilldown.clientes_muestra.length }}
+            de {{ dispDrilldown.num_clientes }} clientes
+            <span v-if="dispDrilldown.clientes_muestra.length < dispDrilldown.num_clientes">
+              (la query limita a 10 por dispositivo)
+            </span>
+          </div>
+          <ul class="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
+            <li
+              v-for="cli in dispDrilldown.clientes_muestra"
+              :key="cli"
+              class="px-4 py-2 flex items-center justify-between hover:bg-slate-50"
+            >
+              <span class="font-mono text-sm text-slate-700">{{ cli }}</span>
+              <RouterLink
+                :to="{ name: 'nodos.detail', params: { label: 'Cliente', id: cli } }"
+                class="text-xs text-brand-600 hover:underline"
+                @click="dispDrilldown = null"
+              >
+                Abrir ficha
+              </RouterLink>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <template #footer>
+        <button class="btn-secondary" @click="dispDrilldown = null">Cerrar</button>
+      </template>
+    </Modal>
   </div>
 </template>

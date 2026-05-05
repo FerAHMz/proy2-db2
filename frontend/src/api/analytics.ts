@@ -35,6 +35,8 @@ export interface AnilloSospechoso {
   cuenta_b: string
   ida: { tx: string; monto: number; fecha: string }[]
   regreso: { tx: string; monto: number; fecha: string }[]
+  num_ida: number
+  num_regreso: number
   volumen_total: number
 }
 
